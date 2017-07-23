@@ -1,10 +1,13 @@
 from PIL import Image
 from lxml import etree
 
-import pyclipper
-
-import random
+import argparse
 import itertools
+import pathlib
+import functools
+import pyclipper
+import random
+import sys
 
 REGION_SHOW = False
 
@@ -39,10 +42,11 @@ def paths(accessor, width, height):
 
     yield from descend_node(result)
 
-def convert(path, fp, scale_factor=100):
+def convert(path, fp, scale_factor=100, margin=10, invert=False):
     img = Image.open(str(path))
     img = img.convert('1')
-    img = img.point(lambda x: 0 if x else 1)
+    if not invert:
+        img = img.point(lambda x: 0 if x else 1)
     unit_paths = paths(img.load(), img.size[0], img.size[1])
 
     svg_namespace = 'http://www.w3.org/2000/svg'
@@ -134,5 +138,48 @@ def convert(path, fp, scale_factor=100):
                     ):
                         pass
 
-with open('output.svg', 'wb') as f:
-    convert('/Users/alynn/Downloads/tag36h11/tag36_11_00003.png', f)
+def argument_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-s',
+        '--scale',
+        help="scale factor for images",
+        type=int,
+        default=100,
+    )
+    parser.add_argument(
+        '-m',
+        '--margin',
+        help="margin on output images",
+        type=int,
+        default=10,
+    )
+    parser.add_argument(
+        '-i',
+        '--invert',
+        help="invert source images",
+        action='store_true',
+    )
+    parser.add_argument(
+        'directory',
+        help="directory of source images",
+        type=pathlib.Path,
+    )
+    return parser
+
+def main(arguments):
+    options = argument_parser().parse_args(arguments)
+    process = functools.partial(
+        convert,
+        scale_factor=options.scale,
+        margin=options.margin,
+        invert=options.invert,
+    )
+
+    for input_file in options.directory.glob('*.png'):
+        with input_file.with_suffix('.svg').open('wb') as f:
+            print(input_file.stem)
+            process(input_file, f)
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
