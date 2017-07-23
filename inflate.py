@@ -8,9 +8,24 @@ import itertools
 
 REGION_SHOW = True
 
+def tp_contiguous(polygon, touching_points):
+    points = list(polygon.exterior.coords)[:-1]
+
+    touching_point_indices = [
+        points.index(x)
+        for x in touching_points
+    ]
+    touching_point_indices.sort()
+
+    return any(
+        touching_point_indices[x + 1] == (
+            touching_point_indices[x] + 1
+        ) % len(points)
+        for x in range(len(touching_point_indices) - 1)
+    )
+
 def merge_polygons(polygons):
     working_queue = list(polygons)
-    random.shuffle(working_queue)
 
     while working_queue:
         focus = working_queue.pop()
@@ -18,12 +33,23 @@ def merge_polygons(polygons):
         new_working_queue = []
 
         for candidate in working_queue:
-            if candidate.touches(focus):
+            focus_points = set(focus.exterior.coords)
+            candidate_points = set(candidate.exterior.coords)
+            touching_points = focus_points & candidate_points
+            if (
+                len(touching_points) >= 2 and
+                tp_contiguous(focus, touching_points) and
+                tp_contiguous(candidate, touching_points)
+            ):
+                # Narrow-phase: make sure the points are contiguous
                 focus_prime = focus.union(candidate)
+
                 if isinstance(focus_prime, Polygon):
                     focus = focus_prime
                     continue
             new_working_queue.append(candidate)
+
+        working_queue = new_working_queue
 
         yield focus
 
@@ -44,7 +70,7 @@ def paths(accessor, width, height):
 
     num_polygons = len(polygons)
 
-    for iteration in itertools.count(0):
+    for iteration in range(3):
         print(f"Iteration {iteration}: {num_polygons} polys")
         polygons = list(merge_polygons(polygons))
         new_num_polygons = len(polygons)
@@ -62,7 +88,7 @@ def paths(accessor, width, height):
 def convert(path, fp, scale_factor=100):
     img = Image.open(str(path))
     img = img.convert('1')
-    img = img.point(lambda x: 0 if x else 1)
+    #img = img.point(lambda x: 0 if x else 1)
     #img = img.point(lambda x: 255 if x else 0)
     #img = img.point(lambda x: 255 if x < 128 else 0)
     unit_paths = paths(img.load(), img.size[0], img.size[1])
@@ -153,4 +179,4 @@ def convert(path, fp, scale_factor=100):
                         pass
 
 with open('output.svg', 'wb') as f:
-    convert('/Users/alynn/Downloads/tag36h11/tag36_11_00000.png', f)
+    convert('/Users/alynn/Downloads/tag36h11/tag36_11_00001.png', f)
