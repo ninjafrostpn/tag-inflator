@@ -8,10 +8,29 @@ import itertools
 
 REGION_SHOW = True
 
+def merge_polygons(polygons):
+    working_queue = list(polygons)
+    random.shuffle(working_queue)
+
+    while working_queue:
+        focus = working_queue.pop()
+
+        new_working_queue = []
+
+        for candidate in working_queue:
+            if candidate.touches(focus):
+                focus_prime = focus.union(candidate)
+                if isinstance(focus_prime, Polygon):
+                    focus = focus_prime
+                    continue
+            new_working_queue.append(candidate)
+
+        yield focus
+
 def paths(accessor, width, height):
     # Construct initial polygons
-    base_polygons = {
-        (x, y): Polygon([
+    polygons = [
+        Polygon([
             (x, y),
             (x + 1, y),
             (x + 1, y + 1),
@@ -21,73 +40,24 @@ def paths(accessor, width, height):
         for y in range(height)
         for x in range(width)
         if accessor[x, y]
-    }
+    ]
 
-    polygon_reps = {
-        (x, y): (x, y)
-        for (x, y) in base_polygons.keys()
-    }
+    num_polygons = len(polygons)
 
-    # Iteratively merge adjacent polygons
+    for iteration in itertools.count(0):
+        print(f"Iteration {iteration}: {num_polygons} polys")
+        polygons = list(merge_polygons(polygons))
+        new_num_polygons = len(polygons)
 
-    iteration = 0
-    while True:
-        any_changed = False
-
-        iteration += 1
-        unique = len(set(polygon_reps.values()))
-        print(f"Iteration {iteration}: {unique} unique polygons")
-
-        def replace_representation(rep_from, rep_to):
-            for key, value in polygon_reps.items():
-                if value == rep_from:
-                    polygon_reps[key] = rep_to
-
-        def directional_merge(xoff, yoff):
-            nonlocal any_changed
-
-            for (x, y), sec_poly_rep in polygon_reps.items():
-                try:
-                    pri_poly_rep = polygon_reps[x - xoff, y - yoff]
-                except KeyError:
-                    continue
-
-                if pri_poly_rep == sec_poly_rep:
-                    continue
-
-                pri_poly = base_polygons[pri_poly_rep]
-                sec_poly = base_polygons[sec_poly_rep]
-
-                new_poly = cascaded_union(
-                    [pri_poly, sec_poly],
-                ).simplify(0.01)
-                print(list(pri_poly.exterior.coords))
-                print(list(sec_poly.exterior.coords))
-                print(list(new_poly.exterior.coords))
-
-                if (
-                    not new_poly.is_valid or
-                    not new_poly.is_simple
-                ):
-                    continue
-
-                print(f"Merge at {x}, {y} with {x - xoff}, {y - yoff}")
-                replace_representation(sec_poly_rep, pri_poly_rep)
-
-                del base_polygons[sec_poly_rep]
-                base_polygons[pri_poly_rep] = new_poly
-
-                any_changed = True
-                return
-
-        directional_merge(1, 0)
-        directional_merge(0, 1)
-
-        if not any_changed:
+        if new_num_polygons == num_polygons:
             break
 
-    for region in base_polygons.values():
-        yield list(region.exterior.coords)
+        num_polygons = new_num_polygons
+
+    return [
+        list(x.simplify(0.01).exterior.coords)
+        for x in polygons
+    ]
 
 def convert(path, fp, scale_factor=100):
     img = Image.open(str(path))
