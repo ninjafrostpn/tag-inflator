@@ -1,96 +1,93 @@
 from PIL import Image
 from lxml import etree
+from shapely.geometry import Polygon
+from shapely.ops import cascaded_union
 
 import random
+import itertools
 
-REGION_SHOW = False
-
-def path_steps_from_region(region):
-    region = set(region)
-
-    if not region:
-        raise ValueError("empty region")
-
-    start = min(region)
-    current_x, current_y = start
-
-    yield start
-
-    while True:
-        if (
-            (current_x, current_y) in region and
-            (current_x, current_y - 1) not in region
-        ):
-            current_x += 1
-        elif (current_x - 1, current_y) in region:
-            current_y += 1
-        elif (current_x - 1, current_y - 1) in region:
-            current_x -= 1
-        else:
-            current_y -= 1
-
-        yield current_x, current_y
-
-        if (current_x, current_y) == start:
-            break
-
-
-def is_colinear(a, b, c):
-    if a[0] == b[0] == c[0]:
-        return True
-
-    if a[1] == b[1] == c[1]:
-        return True
-
-    return False
-
-
-def path_from_region(region):
-    steps = list(path_steps_from_region(region))
-
-    # Optimise steps
-    optimised = False
-
-    while not optimised:
-        for i in range(len(steps) - 2):
-            a = steps[i]
-            b = steps[i + 1]
-            c = steps[i + 2]
-
-            if is_colinear(a, b, c):
-                del steps[i + 1]
-                break
-        else:
-            optimised = True
-
-    return steps
+REGION_SHOW = True
 
 def paths(accessor, width, height):
-    # A fairly dumb algorithm to group islands of pixels together
-    regions = []
+    # Construct initial polygons
+    base_polygons = {
+        (x, y): Polygon([
+            (x, y),
+            (x + 1, y),
+            (x + 1, y + 1),
+            (x, y + 1),
+            (x, y),
+        ]).convex_hull
+        for y in range(height)
+        for x in range(width)
+        if accessor[x, y]
+    }
 
-    for y in range(height):
-        for x in range(width):
-            if not accessor[x, y]:
-                continue
+    polygon_reps = {
+        (x, y): (x, y)
+        for (x, y) in base_polygons.keys()
+    }
 
-            for region in regions:
-                if (x, y - 1) in region:
-                    region.add((x, y))
-                    break
-            else:
-                for region in regions:
-                    if (
-                        (x - 1, y) in region and
-                        (x - 1, y - 1) not in region
-                    ):
-                        region.add((x, y))
-                        break
-                else:
-                    regions.append({(x, y)})
+    # Iteratively merge adjacent polygons
 
-    for region in regions:
-        yield path_from_region(region)
+    iteration = 0
+    while True:
+        any_changed = False
+
+        iteration += 1
+        unique = len(set(polygon_reps.values()))
+        print(f"Iteration {iteration}: {unique} unique polygons")
+
+        def replace_representation(rep_from, rep_to):
+            for key, value in polygon_reps.items():
+                if value == rep_from:
+                    polygon_reps[key] = rep_to
+
+        def directional_merge(xoff, yoff):
+            nonlocal any_changed
+
+            for (x, y), sec_poly_rep in polygon_reps.items():
+                try:
+                    pri_poly_rep = polygon_reps[x - xoff, y - yoff]
+                except KeyError:
+                    continue
+
+                if pri_poly_rep == sec_poly_rep:
+                    continue
+
+                pri_poly = base_polygons[pri_poly_rep]
+                sec_poly = base_polygons[sec_poly_rep]
+
+                new_poly = cascaded_union(
+                    [pri_poly, sec_poly],
+                ).simplify(0.01)
+                print(list(pri_poly.exterior.coords))
+                print(list(sec_poly.exterior.coords))
+                print(list(new_poly.exterior.coords))
+
+                if (
+                    not new_poly.is_valid or
+                    not new_poly.is_simple
+                ):
+                    continue
+
+                print(f"Merge at {x}, {y} with {x - xoff}, {y - yoff}")
+                replace_representation(sec_poly_rep, pri_poly_rep)
+
+                del base_polygons[sec_poly_rep]
+                base_polygons[pri_poly_rep] = new_poly
+
+                any_changed = True
+                return
+
+        directional_merge(1, 0)
+        directional_merge(0, 1)
+
+        if not any_changed:
+            break
+
+    for region in base_polygons.values():
+        yield list(region.exterior.coords)
 
 def convert(path, fp, scale_factor=100):
     img = Image.open(str(path))
@@ -137,23 +134,36 @@ def convert(path, fp, scale_factor=100):
                     tag('stroke', svg_namespace): 'none',
                 }
             ):
-                region_colours = [
-                    'red',
-                    'blue',
-                    'green',
-                    'magenta',
-                    'cyan',
-                    'yellow',
-                    'orange',
-                    'purple',
-                    '#555',
-                    '#bbb',
-                ]
+                if REGION_SHOW:
+                    region_colours = [
+                        '#001f3f', # navy
+                        '#0074d9', # blue
+                        '#7fdbff', # aqua
+                        '#39cccc', # teal
+                        '#3d9970', # olive
+                        '#2ecc40', # green
+                        '#01ff70', # lime
+                        '#ffdc00', # yellow
+                        '#ff851b', # orange
+                        '#ff4136', # red
+                        '#85144b', # maroon
+                        '#f012be', # fuchsia
+                        '#b10dc9', # purple
+                        '#111111', # black
+                        '#aaaaaa', # grey
+                        '#dddddd', # silver
+                    ]
 
-                random.shuffle(region_colours)
+                    random.shuffle(region_colours)
+
+                    region_colours = itertools.cycle(region_colours)
+                else:
+                    region_colours = itertools.cycle(['black'])
 
                 for path in unit_paths:
                     path_components = [f"M{path[0][0]} {path[0][1]}"]
+
+                    print(path)
 
                     path_components.extend(
                         f"L{x} {y}"
@@ -161,11 +171,7 @@ def convert(path, fp, scale_factor=100):
                     )
 
                     path_components.append("z")
-
-                    if REGION_SHOW:
-                        colour = region_colours.pop()
-                    else:
-                        colour = 'black'
+                    colour = next(region_colours)
 
                     with f.element(
                         tag('path', svg_namespace),
