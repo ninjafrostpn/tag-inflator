@@ -12,4 +12,9 @@ jobs:
       - run: env/bin/pip install -r requirements.txt
       - run: wget https://april.eecs.umich.edu/media/apriltag/tag36h11.tgz
       - run: tar -xvf tag36h11.tgz
-      - run: env/bin/python inflate.py tag36h11
+      - run: mv tag36h11 markers
+      - run: env/bin/python inflate.py markers
+      - run: zip markers.zip markers/*.pdf
+      - store_artifacts:
+          path: markers.zip
+          destination: markers.zip
