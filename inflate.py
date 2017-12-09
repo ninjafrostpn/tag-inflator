@@ -8,8 +8,15 @@ import functools
 import pyclipper
 import random
 import sys
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
 
 REGION_SHOW = False
+
+A4 = ('210mm', '297mm')
+
+SIZE = A4
+
 
 def paths(accessor, width, height):
     pc = pyclipper.Pyclipper()
@@ -32,8 +39,6 @@ def paths(accessor, width, height):
         pyclipper.PFT_EVENODD,
     )
 
-    print(result.Parent)
-
     def descend_node(node):
         if node.Contour:
             yield node.IsHole, node.Contour + [node.Contour[0]]
@@ -42,7 +47,8 @@ def paths(accessor, width, height):
 
     yield from descend_node(result)
 
-def convert(path, fp, scale_factor=100, margin=10, invert=False):
+
+def convert(path, fp, invert=False):
     img = Image.open(str(path))
     img = img.convert('1')
     if not invert:
@@ -51,8 +57,6 @@ def convert(path, fp, scale_factor=100, margin=10, invert=False):
 
     svg_namespace = 'http://www.w3.org/2000/svg'
     xlink_namespace = 'http://www.w3.org/1999/xlink'
-
-    margin = 10
 
     nsmap = {
         None: svg_namespace,
@@ -73,20 +77,43 @@ def convert(path, fp, scale_factor=100, margin=10, invert=False):
             nsmap=nsmap,
             attrib={
                 tag('baseProfile', svg_namespace): 'full',
-                tag('width', svg_namespace): str(scale_factor * img.size[0] + 2 * margin),
-                tag('height', svg_namespace): str(scale_factor * img.size[1] + 2 * margin),
+                tag('width', svg_namespace): SIZE[0],
+                tag('height', svg_namespace): SIZE[1],
             },
         ):
+
             with f.element(
                 tag('g', svg_namespace),
                 attrib={
                     tag('id', svg_namespace): 'marker',
                     tag('transform', svg_namespace):
-                        f'translate({margin} {margin}) scale({scale_factor})',
+                        f'translate(50 150) scale(50)',
                     tag('stroke', svg_namespace): 'none',
                     tag('fill-rule', svg_namespace): 'evenodd',
                 }
             ):
+                with f.element(
+                        tag('text', svg_namespace),
+                        attrib={
+                            tag('fill', svg_namespace): '#999',
+                            tag('x', svg_namespace): '9',
+                            tag('text-anchor', svg_namespace): 'end',
+                            tag('y', svg_namespace): '9.2',
+                            tag('font-size', svg_namespace): '0.2px',
+                        }
+                ):
+                    f.write(path.stem)
+                with f.element(
+                        tag('text', svg_namespace),
+                        attrib={
+                            tag('fill', svg_namespace): '#999',
+                            tag('x', svg_namespace): '1',
+                            tag('text-anchor', svg_namespace): 'start',
+                            tag('y', svg_namespace): '9.2',
+                            tag('font-size', svg_namespace): '0.2px',
+                        }
+                ):
+                    f.write("This way up")
                 if REGION_SHOW:
                     region_colours = [
                         '#001f3f', # navy
@@ -116,8 +143,6 @@ def convert(path, fp, scale_factor=100, margin=10, invert=False):
                 for is_hole, path in unit_paths:
                     path_components = [f"M{path[0][0]} {path[0][1]}"]
 
-                    print(path)
-
                     path_components.extend(
                         f"L{x} {y}"
                         for x, y in path[1:-1]
@@ -138,22 +163,9 @@ def convert(path, fp, scale_factor=100, margin=10, invert=False):
                     ):
                         pass
 
+
 def argument_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-s',
-        '--scale',
-        help="scale factor for images",
-        type=int,
-        default=100,
-    )
-    parser.add_argument(
-        '-m',
-        '--margin',
-        help="margin on output images",
-        type=int,
-        default=10,
-    )
     parser.add_argument(
         '-i',
         '--invert',
@@ -167,19 +179,25 @@ def argument_parser():
     )
     return parser
 
+
 def main(arguments):
     options = argument_parser().parse_args(arguments)
     process = functools.partial(
         convert,
-        scale_factor=options.scale,
-        margin=options.margin,
         invert=options.invert,
     )
 
     for input_file in options.directory.glob('*.png'):
-        with input_file.with_suffix('.svg').open('wb') as f:
-            print(input_file.stem)
+        if input_file.stem == 'mosaic':
+            continue
+        svg_path = input_file.with_suffix('.svg')
+        print("Processing", input_file.stem)
+        with svg_path.open('wb') as f:
             process(input_file, f)
+
+        svg_data = svg2rlg(str(svg_path))
+        renderPDF.drawToFile(svg_data, str(input_file.with_suffix('.pdf')))
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])
