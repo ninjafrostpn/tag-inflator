@@ -8,8 +8,8 @@ jobs:
 
     steps:
       - checkout
-
-      - run: pip install -r requirements.txt
+      - run: python3 -m venv env
+      - run: env/bin/pip install -r requirements.txt
       - run: wget https://april.eecs.umich.edu/media/apriltag/tag36h11.tgz
       - run: tar -xvf tag36h11.tgz
-      - run: python3 inflate.py tag36h11
+      - run: env/bin/python inflate.py tag36h11
