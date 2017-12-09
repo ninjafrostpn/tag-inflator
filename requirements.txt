@@ -1,0 +1,5 @@
+lxml
+svglib
+reportlab
+pyclipper
+pillow
