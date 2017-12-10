@@ -66,6 +66,8 @@ def convert(path, fp, invert=False):
     def tag(tag, namespace):
         return '{' + namespace + '}' + tag
 
+    svg_tag = functools.partial(tag, namespace=svg_namespace)
+
     with etree.xmlfile(fp, encoding='utf-8') as f:
         f.write_declaration()
         f.write_doctype(
@@ -73,44 +75,44 @@ def convert(path, fp, invert=False):
         )
 
         with f.element(
-            tag('svg', svg_namespace),
+            svg_tag('svg'),
             nsmap=nsmap,
             attrib={
-                tag('baseProfile', svg_namespace): 'full',
-                tag('width', svg_namespace): SIZE[0],
-                tag('height', svg_namespace): SIZE[1],
+                svg_tag('baseProfile'): 'full',
+                svg_tag('width'): SIZE[0],
+                svg_tag('height'): SIZE[1],
             },
         ):
 
             with f.element(
-                tag('g', svg_namespace),
+                svg_tag('g'),
                 attrib={
-                    tag('id', svg_namespace): 'marker',
-                    tag('transform', svg_namespace):
+                    svg_tag('id'): 'marker',
+                    svg_tag('transform'):
                         f'translate(50 150) scale(50)',
-                    tag('stroke', svg_namespace): 'none',
-                    tag('fill-rule', svg_namespace): 'evenodd',
+                    svg_tag('stroke'): 'none',
+                    svg_tag('fill-rule'): 'evenodd',
                 }
             ):
                 with f.element(
-                        tag('text', svg_namespace),
+                        svg_tag('text'),
                         attrib={
-                            tag('fill', svg_namespace): '#999',
-                            tag('x', svg_namespace): '9',
-                            tag('text-anchor', svg_namespace): 'end',
-                            tag('y', svg_namespace): '9.2',
-                            tag('font-size', svg_namespace): '0.2px',
+                            svg_tag('fill'): '#999',
+                            svg_tag('x'): '9',
+                            svg_tag('text-anchor'): 'end',
+                            svg_tag('y'): '9.2',
+                            svg_tag('font-size'): '0.2px',
                         }
                 ):
                     f.write(path.stem)
                 with f.element(
-                        tag('text', svg_namespace),
+                        svg_tag('text'),
                         attrib={
-                            tag('fill', svg_namespace): '#999',
-                            tag('x', svg_namespace): '1',
-                            tag('text-anchor', svg_namespace): 'start',
-                            tag('y', svg_namespace): '9.2',
-                            tag('font-size', svg_namespace): '0.2px',
+                            svg_tag('fill'): '#999',
+                            svg_tag('x'): '1',
+                            svg_tag('text-anchor'): 'start',
+                            svg_tag('y'): '9.2',
+                            svg_tag('font-size'): '0.2px',
                         }
                 ):
                     f.write("This way up")
@@ -155,10 +157,10 @@ def convert(path, fp, invert=False):
                         colour = next(region_colours)
 
                     with f.element(
-                        tag('path', svg_namespace),
+                        svg_tag('path'),
                         attrib={
-                            tag('d', svg_namespace): ' '.join(path_components),
-                            tag('fill', svg_namespace): colour,
+                            svg_tag('d'): ' '.join(path_components),
+                            svg_tag('fill'): colour,
                         }
                     ):
                         pass
