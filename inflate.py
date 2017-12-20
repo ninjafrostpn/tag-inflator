@@ -89,7 +89,7 @@ def convert(path, fp, invert=False):
                 attrib={
                     svg_tag('id'): 'marker',
                     svg_tag('transform'):
-                        f'translate(50 150) scale(50)',
+                        'translate(50 150) scale(50)',
                     svg_tag('stroke'): 'none',
                     svg_tag('fill-rule'): 'evenodd',
                 }
