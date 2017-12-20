@@ -143,10 +143,15 @@ def convert(path, fp, invert=False):
                     region_colours = itertools.cycle(['black'])
 
                 for is_hole, path in unit_paths:
-                    path_components = [f"M{path[0][0]} {path[0][1]}"]
+                    path_components = [
+                        "M{x} {y}".format(
+                            x=path[0][0],
+                            y=path[0][1],
+                        ),
+                    ]
 
                     path_components.extend(
-                        f"L{x} {y}"
+                        "L{x} {y}".format(x=x, y=y)
                         for x, y in path[1:-1]
                     )
 
