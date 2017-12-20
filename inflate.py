@@ -178,6 +178,24 @@ def convert(path, fp, invert=False):
                     ):
                         pass
 
+                # Also add an outline
+                with f.element(
+                    svg_tag('path'),
+                    attrib={
+                        svg_tag('d'): ' '.join(svg_closed_path_components([
+                            (-0.01, -0.01),
+                            (-0.01, 10.01),
+                            (10.01, 10.01),
+                            (10.01, -0.01),
+                            (-0.01, -0.01),
+                        ])),
+                        svg_tag('fill'): 'none',
+                        svg_tag('stroke'): 'silver',
+                        svg_tag('stroke-width'): '0.02',
+                    },
+                ):
+                    pass
+
 
 def argument_parser():
     parser = argparse.ArgumentParser()
