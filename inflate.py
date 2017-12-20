@@ -18,6 +18,34 @@ A4 = ('210mm', '297mm')
 SIZE = A4
 
 
+def get_region_colours():
+    if REGION_SHOW:
+        region_colours = [
+            '#001f3f', # navy
+            '#0074d9', # blue
+            '#7fdbff', # aqua
+            '#39cccc', # teal
+            '#3d9970', # olive
+            '#2ecc40', # green
+            '#01ff70', # lime
+            '#ffdc00', # yellow
+            '#ff851b', # orange
+            '#ff4136', # red
+            '#85144b', # maroon
+            '#f012be', # fuchsia
+            '#b10dc9', # purple
+            '#111111', # black
+            '#aaaaaa', # grey
+            '#dddddd', # silver
+        ]
+
+        random.shuffle(region_colours)
+    else:
+        region_colours = ['black']
+
+    return itertools.cycle(region_colours)
+
+
 def paths(accessor, width, height):
     pc = pyclipper.Pyclipper()
 
@@ -132,32 +160,7 @@ def convert(path, fp, invert=False):
                 with svg_text_element(f, text_anchor='start'):
                     f.write("This way up")
 
-                if REGION_SHOW:
-                    region_colours = [
-                        '#001f3f', # navy
-                        '#0074d9', # blue
-                        '#7fdbff', # aqua
-                        '#39cccc', # teal
-                        '#3d9970', # olive
-                        '#2ecc40', # green
-                        '#01ff70', # lime
-                        '#ffdc00', # yellow
-                        '#ff851b', # orange
-                        '#ff4136', # red
-                        '#85144b', # maroon
-                        '#f012be', # fuchsia
-                        '#b10dc9', # purple
-                        '#111111', # black
-                        '#aaaaaa', # grey
-                        '#dddddd', # silver
-                    ]
-
-                    random.shuffle(region_colours)
-
-                    region_colours = itertools.cycle(region_colours)
-                else:
-                    region_colours = itertools.cycle(['black'])
-
+                region_colours = get_region_colours()
                 for is_hole, path in unit_paths:
                     if is_hole:
                         colour = 'white'
