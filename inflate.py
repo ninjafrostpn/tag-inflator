@@ -88,6 +88,18 @@ def convert(path, fp, invert=False):
 
     svg_tag = functools.partial(tag, namespace=svg_namespace)
 
+    def svg_text_element(f, *, text_anchor):
+        return f.element(
+            svg_tag('text'),
+            attrib={
+                svg_tag('fill'): '#999',
+                svg_tag('x'): '9',
+                svg_tag('text-anchor'): text_anchor,
+                svg_tag('y'): '9.2',
+                svg_tag('font-size'): '0.2px',
+            }
+        )
+
     with etree.xmlfile(fp, encoding='utf-8') as f:
         f.write_declaration()
         f.write_doctype(
@@ -114,28 +126,12 @@ def convert(path, fp, invert=False):
                     svg_tag('fill-rule'): 'evenodd',
                 }
             ):
-                with f.element(
-                        svg_tag('text'),
-                        attrib={
-                            svg_tag('fill'): '#999',
-                            svg_tag('x'): '9',
-                            svg_tag('text-anchor'): 'end',
-                            svg_tag('y'): '9.2',
-                            svg_tag('font-size'): '0.2px',
-                        }
-                ):
+                with svg_text_element(f, text_anchor='end'):
                     f.write(path.stem)
-                with f.element(
-                        svg_tag('text'),
-                        attrib={
-                            svg_tag('fill'): '#999',
-                            svg_tag('x'): '1',
-                            svg_tag('text-anchor'): 'start',
-                            svg_tag('y'): '9.2',
-                            svg_tag('font-size'): '0.2px',
-                        }
-                ):
+
+                with svg_text_element(f, text_anchor='start'):
                     f.write("This way up")
+
                 if REGION_SHOW:
                     region_colours = [
                         '#001f3f', # navy
