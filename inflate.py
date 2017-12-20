@@ -48,6 +48,26 @@ def paths(accessor, width, height):
     yield from descend_node(result)
 
 
+def svg_closed_path_components(coordinates):
+    assert coordinates[0] == coordinates[-1]
+
+    path_components = [
+        "M{x} {y}".format(
+            x=coordinates[0][0],
+            y=coordinates[0][1],
+        ),
+    ]
+
+    path_components.extend(
+        "L{x} {y}".format(x=x, y=y)
+        for x, y in coordinates[1:-1]
+    )
+
+    path_components.append("z")
+
+    return path_components
+
+
 def convert(path, fp, invert=False):
     img = Image.open(str(path))
     img = img.convert('1')
@@ -143,23 +163,12 @@ def convert(path, fp, invert=False):
                     region_colours = itertools.cycle(['black'])
 
                 for is_hole, path in unit_paths:
-                    path_components = [
-                        "M{x} {y}".format(
-                            x=path[0][0],
-                            y=path[0][1],
-                        ),
-                    ]
-
-                    path_components.extend(
-                        "L{x} {y}".format(x=x, y=y)
-                        for x, y in path[1:-1]
-                    )
-
-                    path_components.append("z")
                     if is_hole:
                         colour = 'white'
                     else:
                         colour = next(region_colours)
+
+                    path_components = svg_closed_path_components(path)
 
                     with f.element(
                         svg_tag('path'),
